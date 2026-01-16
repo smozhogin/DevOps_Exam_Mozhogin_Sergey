@@ -1,0 +1,5 @@
+FROM python:3.11-slim
+WORKDIR /mlflow
+COPY requirements_mlflow.txt .
+RUN python -m pip install --no-cache-dir -r requirements_mlflow.txt
+CMD ["sh", "-c", "mlflow server --host 0.0.0.0 --port ${PORT:-5000} --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlruns --allowed-hosts '*' --cors-allowed-origins '*'"]

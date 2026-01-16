@@ -1,0 +1,4 @@
+train:
+  n_estimators: [10, 50, 100, 300, 500]
+  random_state: 42
+  test_size: 0.3
