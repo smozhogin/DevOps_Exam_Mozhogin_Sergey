@@ -147,7 +147,7 @@ jobs:
               run: |
                   terraform apply -auto-approve                       -var="folder_id=${{ secrets.YC_FOLDER_ID }}"                       -var="service_account_id=${{ secrets.YC_SERVICE_ACCOUNT_ID }}"                       -var="api_image_url=${{ env.REGISTRY }}/${{ env.API_NAME }}:${{ env.DEPLOY_TAG }}"
 
-            - name: Debug revisions
+            - name: Debug Revisions
               if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
               run: |
                   set +e
@@ -155,14 +155,17 @@ jobs:
                   echo "=== Container get ==="
                   yc serverless container get --name "${{ env.API_NAME }}" --format yaml
 
-                  echo "=== Revisions list ==="
-                  yc serverless container revision list --name "${{ env.API_NAME }}" --format yaml
+                  echo "=== Revisions list (by name) ==="
+                  yc serverless container revision list --container-name "${{ env.API_NAME }}" --format yaml
 
-                  echo "=== Images in registry (sanity check) ==="
-                  yc container image list --repository-name "${{ env.API_NAME }}" --format yaml
+                  echo "=== Repositories list (registry) ==="
+                  yc container repository list --registry-id "${{ secrets.YC_REGISTRY_ID }}" --format yaml
 
-                  echo "=== IAM: who am I ==="
-                  yc config list
+                  echo "=== Images in registry (expected repo) ==="
+                  yc container image list                     --registry-id "${{ secrets.YC_REGISTRY_ID }}"                     --repository-name "${{ secrets.YC_REGISTRY_ID }}/${{ env.API_NAME }}"                     --format yaml
+
+                  echo "=== Images in registry (all) ==="
+                  yc container image list --registry-id "${{ secrets.YC_REGISTRY_ID }}" --format yaml
 
                   echo "=== Done ==="
 
