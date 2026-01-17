@@ -147,6 +147,25 @@ jobs:
               run: |
                   terraform apply -auto-approve                       -var="folder_id=${{ secrets.YC_FOLDER_ID }}"                       -var="service_account_id=${{ secrets.YC_SERVICE_ACCOUNT_ID }}"                       -var="api_image_url=${{ env.REGISTRY }}/${{ env.API_NAME }}:${{ env.DEPLOY_TAG }}"
 
+            - name: Debug revisions
+              if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
+              run: |
+                  set +e
+
+                  echo "=== Container get ==="
+                  yc serverless container get --name "${{ env.API_NAME }}" --format yaml
+
+                  echo "=== Revisions list ==="
+                  yc serverless container revision list --name "${{ env.API_NAME }}" --format yaml
+
+                  echo "=== Images in registry (sanity check) ==="
+                  yc container image list --repository-name "${{ env.API_NAME }}" --format yaml
+
+                  echo "=== IAM: who am I ==="
+                  yc config list
+
+                  echo "=== Done ==="
+
             - name: Show API URL
               if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
               working-directory: infra
