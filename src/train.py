@@ -3,12 +3,15 @@ import yaml
 import joblib
 import mlflow
 import mlflow.sklearn
+import pandas as pd
 import matplotlib.pyplot as plt
 from mlflow.models.signature import infer_signature
 from sklearn import datasets
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from evidently import Report
+from evidently.presets import DataDriftPreset
 
 with open('params.yaml', 'r') as f:
     params = yaml.safe_load(f)
@@ -32,11 +35,11 @@ y = iris_df[iris_df.columns[-1]]
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state, stratify=y)
 
-mlflow.set_tracking_uri(os.getenv('MLFLOW_TRACKING_URI', 'http://127.0.0.1:5000'))
+mlflow.set_tracking_uri(os.getenv('MLFLOW_TRACKING_URI', 'http://mlflow:5000'))
 
 mlflow.set_experiment('Эксперимент с классификацией ирисов')
 
-for d in ['models', 'plots']:
+for d in ['models', 'plots', 'evidently']:
     os.makedirs(d, exist_ok=True)
 
 best_f1 = -1.0
@@ -99,3 +102,14 @@ with mlflow.start_run(run_name='Лучшая модель'):
         input_example=X_train.head(1),
         registered_model_name='iris_random_forest'
     )
+
+    ref_df = X_train.copy()
+    current_df = X_test.copy()
+
+    report = Report([DataDriftPreset()])
+    snapshot = report.run(current_data=current_df, reference_data=ref_df)
+
+    drift_path = os.path.join('evidently', 'report.html')
+    snapshot.save_html(drift_path)
+
+    mlflow.log_artifact(drift_path, artifact_path='evidently')

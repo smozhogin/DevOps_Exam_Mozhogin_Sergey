@@ -1,1 +1,1 @@
-mlflow
+mlflow==3.8.1

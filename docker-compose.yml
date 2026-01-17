@@ -25,6 +25,7 @@ services:
     volumes:
       - ./models:/app/models
       - ./plots:/app/plots
+      - ./evidently:/app/evidently
     depends_on:
       - mlflow
 
