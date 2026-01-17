@@ -3,7 +3,7 @@
 - **Ссылка на репозиторий с публичным доступом в GitHub:** https://github.com/smozhogin/DevOps_Exam_Mozhogin_Sergey
 - **Ссылка на контейнеризированное приложение в Yandex Cloud Serverless Containers:** https://bba5oevrg6svir5k2nci.containers.yandexcloud.net/docs
 - **Ссылка на ноутбук по нагрузочному тестированию в Locust с публичным доступом в Google Colab:** https://colab.research.google.com/drive/1LhxauZqq7BWB0eWIH7ch3-6nwdvYswpN
-- **Спецификация OpenAPI** находится в репозитории в файле **openapi.yml**
+- **Спецификация OpenAPI** находится в репозитории в файле **openapi.yaml**
 
 ## Несколько слов об отчете
 Этот отчет сконвертирован в PDF из файла README.md, доступного в публичном репозитории GitHub по ссылке https://github.com/smozhogin/DevOps_Exam_Mozhogin_Sergey. Актуальная версия отчета хранится в репозитории.
@@ -26,7 +26,20 @@
 Был проведен анализ дрейфа данных при обучении модели в скрипте **src/train.py**. Между обучающей и тестовой выборками дрейфа не обнаружено.
 
 ## CI/CD сервиса app в Yandex Cloud Serverless Containers
-В проекте реализован воркфлоу **.github/workflows/deploy.yml** **GitHub Actions** по деплою контейнеризированного приложения **app** в **Yandex Cloud Serverless Containers**.
+В проекте реализован воркфлоу **GitHub Actions** (**.github/workflows/deploy.yml**) по деплою контейнеризированного приложения **app** в **Yandex Cloud Serverless Containers**.
+
+Обновление облачного контейнера происходит при пуше в ветку **main** изменений:
+```
+api:
+    - "app/**"
+    - "src/**"
+    - "params.yaml"
+    - "Dockerfile.app"
+    - "requirements_app.txt"
+infra:
+    - "infra/**"
+    - ".github/workflows/**"
+```
 
 ## Интерпретация отчета Locust по нагрузочному тестированию
 Отчет хранится в репозитории по пути **locust/Locust_2026-01-17-09h50_locustfile.py_https___bba5oevrg6svir5k2nci.containers.yandexcloud.net_predict.html**.
