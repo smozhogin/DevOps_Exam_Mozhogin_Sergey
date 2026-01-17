@@ -3,6 +3,7 @@
 - **Ссылка на репозиторий с публичным доступом в GitHub:** https://github.com/smozhogin/DevOps_Exam_Mozhogin_Sergey
 - **Ссылка на контейнеризированное приложение в Yandex Cloud Serverless Containers:** https://bba5oevrg6svir5k2nci.containers.yandexcloud.net/docs
 - **Ссылка на ноутбук по нагрузочному тестированию в Locust с публичным доступом в Google Colab:** https://colab.research.google.com/drive/1LhxauZqq7BWB0eWIH7ch3-6nwdvYswpN
+- **Спецификация OpenAPI** находится в репозитории в файле **openapi.yml**
 
 ## Несколько слов об отчете
 Этот отчет сконвертирован в PDF из файла README.md, доступного в публичном репозитории GitHub по ссылке https://github.com/smozhogin/DevOps_Exam_Mozhogin_Sergey. Актуальная версия отчета хранится в репозитории.
@@ -50,6 +51,3 @@ docker compose -p devops_exam run --rm trainer
 ```
 
 ## Скриншоты
-
-## Что осталось сделать
-- Markdown в PDF.
