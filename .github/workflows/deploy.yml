@@ -60,6 +60,13 @@ jobs:
               if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
               uses: docker/setup-buildx-action@v3
 
+            - name: Train Model
+              if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
+              run: |
+                  docker compose -p devops_exam up -d mlflow
+                  docker compose -p devops_exam run --rm trainer
+                  test -f models/model.pkl
+
             - name: Build & Push API
               if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
               uses: docker/build-push-action@v6
@@ -141,28 +148,6 @@ jobs:
               working-directory: infra
               run: |
                   terraform apply -auto-approve                       -var="folder_id=${{ secrets.YC_FOLDER_ID }}"                       -var="service_account_id=${{ secrets.YC_SERVICE_ACCOUNT_ID }}"                       -var="api_image_url=${{ env.REGISTRY }}/${{ env.API_NAME }}:${{ env.DEPLOY_TAG }}"
-
-            - name: Debug Revisions
-              if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
-              run: |
-                  set +e
-
-                  echo "=== Container get ==="
-                  yc serverless container get --name "${{ env.API_NAME }}" --format yaml
-
-                  echo "=== Revisions list (by name) ==="
-                  yc serverless container revision list --container-name "${{ env.API_NAME }}" --format yaml
-
-                  echo "=== Repositories list (registry) ==="
-                  yc container repository list --registry-id "${{ secrets.YC_REGISTRY_ID }}" --format yaml
-
-                  echo "=== Images in registry (expected repo) ==="
-                  yc container image list                     --registry-id "${{ secrets.YC_REGISTRY_ID }}"                     --repository-name "${{ secrets.YC_REGISTRY_ID }}/${{ env.API_NAME }}"                     --format yaml
-
-                  echo "=== Images in registry (all) ==="
-                  yc container image list --registry-id "${{ secrets.YC_REGISTRY_ID }}" --format yaml
-
-                  echo "=== Done ==="
 
             - name: Show API URL
               if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
