@@ -1,0 +1,142 @@
+name: ML Retrain Pipeline Build & Deploy
+
+on:
+    push:
+        branches: [main]
+
+permissions:
+    contents: read
+
+jobs:
+    deploy:
+        name: Build & Deploy
+        runs-on: ubuntu-latest
+
+        env:
+            REGISTRY: cr.yandex/${{ secrets.YC_REGISTRY_ID }}
+            TAG: ${{ github.sha }}
+            API_NAME: ml-service-api
+
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Detect Changes
+              uses: dorny/paths-filter@v3
+              id: changes
+              with:
+                  filters: |
+                      api:
+                        - "app/**"
+                        - "src/**"
+                        - "params.yaml"
+                        - "Dockerfile.app"
+                        - "requirements_app.txt"
+                      infra:
+                        - "infra/**"
+                        - ".github/workflows/**"
+
+            - name: Setup Yandex Cloud
+              if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
+              uses: nightstory/setup-yc@v1
+
+            - name: Configure Yandex Cloud
+              if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
+              run: |
+                  cat > sa-key.json <<'JSON'
+                  ${{ secrets.YC_SA_KEY_JSON }}
+                  JSON
+                  python -m json.tool sa-key.json > /dev/null
+                  yc config set service-account-key sa-key.json
+                  yc config set folder-id ${{ secrets.YC_FOLDER_ID }}
+
+            - name: Login to Yandex Container Registry
+              if: steps.changes.outputs.api == 'true'
+              uses: yc-actions/yc-cr-login@v2
+              with:
+                  yc-sa-json-credentials: ${{ secrets.YC_SA_KEY_JSON }}
+
+            - name: Set-up Docker Buildx
+              if: steps.changes.outputs.api == 'true'
+              uses: docker/setup-buildx-action@v3
+
+            - name: Build & Push API
+              if: steps.changes.outputs.api == 'true'
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: Dockerfile.app
+                  push: true
+                  tags: ${{ env.REGISTRY }}/${{ env.API_NAME }}:${{ env.TAG }}
+
+            - name: Export Yandex Cloud Key for Terraform Provider
+              if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
+              run: echo "YC_SERVICE_ACCOUNT_KEY_FILE=$PWD/sa-key.json" >> $GITHUB_ENV
+
+            - name: Setup Terraform
+              if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
+              uses: hashicorp/setup-terraform@v3
+
+            - name: Configure Terraform CLI
+              if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
+              run: |
+                  mkdir -p ~/.terraform.d
+                  cat > ~/.terraform.d/terraform.rc <<'EOF'
+                  provider_installation {
+                      network_mirror {
+                          url = "https://terraform-mirror.yandexcloud.net/"
+                          include = ["registry.terraform.io/*/*"]
+                      }
+                      direct {
+                          exclude = ["registry.terraform.io/*/*"]
+                      }
+                  }
+                  EOF
+
+            - name: Init Terraform
+              if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
+              working-directory: infra
+              run: terraform init -upgrade
+
+            - name: Install jq
+              if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
+              run: |
+                  sudo apt-get update -y
+                  sudo apt-get install -y jq
+
+            - name: Import Existing API Container (Terraform)
+              if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
+              working-directory: infra
+              run: |
+                  set -euo pipefail
+
+                  if terraform state list | grep -q '^yandex_serverless_container\.ml_service_api$'; then
+                      echo "Already in terraform state. Skip import."
+                      exit 0
+                  fi
+
+                  set +e
+                  API_JSON="$(yc serverless container get --name "${{ env.API_NAME }}" --format json 2>/dev/null)"
+                  RC=$?
+                  set -e
+
+                  if [ "$RC" -ne 0 ] || [ -z "$API_JSON" ]; then
+                      echo "API container not found in YC. Skipping import (will be created by apply)."
+                      exit 0
+                  fi
+
+                  API_ID="$(echo "$API_JSON" | jq -r '.id')"
+                  echo "Importing container id: $API_ID"
+
+                  terraform import -input=false                       -var="folder_id=${{ secrets.YC_FOLDER_ID }}"                       -var="service_account_id=${{ secrets.YC_SERVICE_ACCOUNT_ID }}"                       -var="api_image_url=${{ env.REGISTRY }}/${{ env.API_NAME }}:${{ env.TAG }}"                       yandex_serverless_container.ml_service_api "$API_ID"
+
+            - name: Apply Terraform
+              if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
+              working-directory: infra
+              run: |
+                  terraform apply -auto-approve                       -var="folder_id=${{ secrets.YC_FOLDER_ID }}"                       -var="service_account_id=${{ secrets.YC_SERVICE_ACCOUNT_ID }}"                       -var="api_image_url=${{ env.REGISTRY }}/${{ env.API_NAME }}:${{ env.TAG }}"
+
+            - name: Show API URL
+              if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
+              working-directory: infra
+              run: terraform output -raw api_url
