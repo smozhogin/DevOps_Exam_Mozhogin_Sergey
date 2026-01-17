@@ -79,7 +79,7 @@ docker-compose up -d
 docker compose -p devops_exam run --rm trainer
 ```
 ```
-Запуск приложений локально в браузере:
+# Запуск приложений локально в браузере:
 http://localhost:8000/docs # Контейнер "app"
 http://localhost:5000 # Контейнер "mlflow"
 ```
