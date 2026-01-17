@@ -43,6 +43,9 @@
 - Ramp up: 100
 - Run time: 120s
 
+Графики из отчета Locust:
+![Скрин отчета Locust](screens/locust.png)
+
 ## CI/CD сервиса app в Yandex Cloud Serverless Containers
 В проекте реализован воркфлоу **GitHub Actions** (**.github/workflows/deploy.yml**) по деплою контейнеризированного приложения **app** в **Yandex Cloud Serverless Containers**.
 
