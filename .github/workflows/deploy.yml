@@ -67,7 +67,9 @@ jobs:
                   context: .
                   file: Dockerfile.app
                   push: true
-                  tags: ${{ env.REGISTRY }}/${{ env.API_NAME }}:${{ env.TAG }}
+                  tags: |
+                      ${{ env.REGISTRY }}/${{ env.API_NAME }}:${{ env.TAG }}
+                      ${{ env.REGISTRY }}/${{ env.API_NAME }}:latest
 
             - name: Export Yandex Cloud Key for Terraform Provider
               if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
@@ -104,6 +106,15 @@ jobs:
                   sudo apt-get update -y
                   sudo apt-get install -y jq
 
+            - name: Choose Deploy Tag
+              if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
+              run: |
+                  if [ "${{ steps.changes.outputs.api }}" = "true" ]; then
+                      echo "DEPLOY_TAG=${{ env.TAG }}" >> $GITHUB_ENV
+                  else
+                      echo "DEPLOY_TAG=latest" >> $GITHUB_ENV
+                  fi
+
             - name: Import Existing API Container (Terraform)
               if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
               working-directory: infra
@@ -128,13 +139,13 @@ jobs:
                   API_ID="$(echo "$API_JSON" | jq -r '.id')"
                   echo "Importing container id: $API_ID"
 
-                  terraform import -input=false                       -var="folder_id=${{ secrets.YC_FOLDER_ID }}"                       -var="service_account_id=${{ secrets.YC_SERVICE_ACCOUNT_ID }}"                       -var="api_image_url=${{ env.REGISTRY }}/${{ env.API_NAME }}:${{ env.TAG }}"                       yandex_serverless_container.ml_service_api "$API_ID"
+                  terraform import -input=false                       -var="folder_id=${{ secrets.YC_FOLDER_ID }}"                       -var="service_account_id=${{ secrets.YC_SERVICE_ACCOUNT_ID }}"                       -var="api_image_url=${{ env.REGISTRY }}/${{ env.API_NAME }}:${{ env.DEPLOY_TAG }}"                       yandex_serverless_container.ml_service_api "$API_ID"
 
             - name: Apply Terraform
               if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
               working-directory: infra
               run: |
-                  terraform apply -auto-approve                       -var="folder_id=${{ secrets.YC_FOLDER_ID }}"                       -var="service_account_id=${{ secrets.YC_SERVICE_ACCOUNT_ID }}"                       -var="api_image_url=${{ env.REGISTRY }}/${{ env.API_NAME }}:${{ env.TAG }}"
+                  terraform apply -auto-approve                       -var="folder_id=${{ secrets.YC_FOLDER_ID }}"                       -var="service_account_id=${{ secrets.YC_SERVICE_ACCOUNT_ID }}"                       -var="api_image_url=${{ env.REGISTRY }}/${{ env.API_NAME }}:${{ env.DEPLOY_TAG }}"
 
             - name: Show API URL
               if: steps.changes.outputs.api == 'true' || steps.changes.outputs.infra == 'true'
